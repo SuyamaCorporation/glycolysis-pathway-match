@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>解糖系 代謝 経路 マッチング</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4">
+<div class="max-w-4xl mx-auto">
+  <h1 class="text-2xl font-bold text-center text-green-400 mb-2">解糖系 代謝経路 マッチング</h1>
+  <p class="text-center text-gray-400 text-sm mb-4">グルコースから ピルビン酸 への10ステップを学ぼう</p>
+
+  <div class="flex justify-between items-center mb-4 bg-gray-800 rounded-lg p-3">
+    <div class="text-sm">ステップ: <span id="stepNum" class="text-green-400 font-bold">1</span>/10</div>
+    <div class="text-sm">スコア: <span id="scoreDisplay" class="text-yellow-400 font-bold">0</span>/10</div>
+    <button id="restartBtn" class="bg-green-700 hover:bg-green-600 text-white text-xs px-3 py-1 rounded" onclick="restart()">リスタート</button>
+  </div>
+
+  <div id="quizArea" class="space-y-4">
+    <div class="bg-gray-800 rounded-xl p-4">
+      <div class="text-center mb-3">
+        <div class="text-xs text-gray-400 mb-1">基質（反応物）</div>
+        <div id="substrateBox" class="inline-block bg-blue-800 text-white font-bold px-6 py-3 rounded-lg text-lg"></div>
+        <div class="text-gray-500 my-2">↓</div>
+        <div class="text-xs text-gray-400 mb-1">生成物</div>
+        <div id="productBox" class="inline-block bg-purple-800 text-white font-bold px-6 py-3 rounded-lg text-lg"></div>
+      </div>
+      <div class="text-center text-xs text-gray-400 mt-2" id="stepLabel"></div>
+    </div>
+
+    <div id="enzymeSection">
+      <div class="text-sm text-gray-300 mb-2 font-semibold">① この反応を触媒する酵素は？</div>
+      <div id="enzymeOptions" class="grid grid-cols-2 gap-2"></div>
+    </div>
+
+    <div id="energySection" class="mt-3">
+      <div class="text-sm text-gray-300 mb-2 font-semibold">② エネルギー変化は？</div>
+      <div id="energyOptions" class="grid grid-cols-2 gap-2"></div>
+    </div>
+
+    <div id="explanationBox" class="hidden bg-gray-700 rounded-lg p-4 text-sm mt-2">
+      <div class="font-bold text-green-400 mb-1" id="explanationResult"></div>
+      <div id="explanationText" class="text-gray-300 leading-relaxed"></div>
+    </div>
+
+    <button id="nextBtn" class="hidden w-full bg-green-700 hover:bg-green-600 text-white py-2 rounded-lg font-semibold mt-2" onclick="nextStep()">次のステップ →</button>
+  </div>
+
+  <div id="resultArea" class="hidden text-center py-8">
+    <div class="text-5xl mb-4">🏆</div>
+    <div class="text-2xl font-bold text-yellow-400 mb-2">完了！</div>
+    <div class="text-xl mb-4">スコア: <span id="finalScore" class="text-green-400 font-bold"></span> / 20点</div>
+    <div id="rankMessage" class="text-lg text-gray-300 mb-6"></div>
+    <button onclick="restart()" class="bg-green-700 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-bold">もう一度挑戦</button>
+  </div>
+</div>
+
+<script>
+const steps = [
+  {
+    step: 1, substrate: "グルコース (C6)", product: "グルコース-6-リン酸",
+    enzyme: "ヘキソキナーゼ",
+    wrongEnzymes: ["ホスホグルコースイソメラーゼ", "アルドラーゼ", "ピルビン酸キナーゼ"],
+    energy: "ATP消費 (×1)",
+    wrongEnergy: ["ATP産生 (×2)", "NADH産生 (×1)", "変化なし"],
+    explanation: "ヘキソキナーゼはATPを使ってグルコースをリン酸化します。これによりグルコースが細胞内に閉じ込められます。肝臓ではグルコキナーゼが同じ反応を担います。"
+  },
+  {
+    step: 2, substrate: "グルコース-6-リン酸", product: "フルクトース-6-リン酸",
+    enzyme: "ホスホグルコースイソメラーゼ",
+    wrongEnzymes: ["ホスホフルクトキナーゼ", "ヘキソキナーゼ", "エノラーゼ"],
+    energy: "変化なし",
+    wrongEnergy: ["ATP消費 (×1)", "NADH産生 (×1)", "ATP産生 (×1)"],
+    explanation: "異性化反応です。アルドース（グルコース-6-P）からケトース（フルクトース-6-P）への変換。エネルギーを必要とせず可逆反応です。"
+  },
+  {
+    step: 3, substrate: "フルクトース-6-リン酸", product: "フルクトース-1,6-ビスリン酸",
+    enzyme: "ホスホフルクトキナーゼ-1",
+    wrongEnzymes: ["フルクトース-1,6-ビスホスファターゼ", "アルドラーゼ", "ホスホグルコースイソメラーゼ"],
+    energy: "ATP消費 (×1)",
+    wrongEnergy: ["ATP産生 (×2)", "NADH産生 (×2)", "変化なし"],
+    explanation: "解糖系の速度決定段階。PFK-1はATPにより阻害され、AMPにより活性化されます。この反応は不可逆で、解糖系の調節の要です。"
+  },
+  {
+    step: 4, substrate: "フルクトース-1,6-ビスリン酸", product: "DHAP + グリセルアルデヒド-3-P",
+    enzyme: "アルドラーゼ",
+    wrongEnzymes: ["トリオースリン酸イソメラーゼ", "グリセルアルデヒド-3-P脱水素酵素", "ホスホグルコースイソメラーゼ"],
+    energy: "変化なし",
+    wrongEnergy: ["ATP消費 (×1)", "NADH産生 (×1)", "ATP産生 (×1)"],
+    explanation: "6炭素の分子を3炭素2分子に分割します。生成した2つのトリオースリン酸のうち、DHAPはトリオースリン酸イソメラーゼによりG-3-Pに変換されます。"
+  },
+  {
+    step: 5, substrate: "DHAP", product: "グリセルアルデヒド-3-リン酸",
+    enzyme: "トリオースリン酸イソメラーゼ",
+    wrongEnzymes: ["アルドラーゼ", "ホスホグリセリン酸キナーゼ", "エノラーゼ"],
+    energy: "変化なし",
+    wrongEnergy: ["ATP消費 (×1)", "NADH産生 (×1)", "ATP産生 (×1)"],
+    explanation: "DHAPをG-3-Pに異性化します。触媒効率が最高レベルの酵素の一つです。この後の反応はG-3-P 2分子で進行します。"
+  },
+  {
+    step: 6, substrate: "グリセルアルデヒド-3-P (×2)", product: "1,3-ビスホスホグリセリン酸 (×2)",
+    enzyme: "グリセルアルデヒド-3-P脱水素酵素",
+    wrongEnzymes: ["ホスホグリセリン酸キナーゼ", "ピルビン酸キナーゼ", "エノラーゼ"],
+    energy: "NADH産生 (×2)",
+    wrongEnergy: ["ATP産生 (×2)", "ATP消費 (×2)", "変化なし"],
+    explanation: "酸化的リン酸化反応。NAD⁺をNADHに還元しながら基質をリン酸化します。ヒ素中毒はこの酵素を阻害することで解糖系を止めます。"
+  },
+  {
+    step: 7, substrate: "1,3-ビスホスホグリセリン酸 (×2)", product: "3-ホスホグリセリン酸 (×2)",
+    enzyme: "ホスホグリセリン酸キナーゼ",
+    wrongEnzymes: ["ホスホグリセリン酸ムターゼ", "ピルビン酸キナーゼ", "グリセルアルデヒド-3-P脱水素酵素"],
+    energy: "ATP産生 (×2)",
+    wrongEnergy: ["ATP消費 (×2)", "NADH産生 (×2)", "変化なし"],
+    explanation: "初めてのATP産生ステップ（基質レベルリン酸化）。2分子のATPが産生され、ステップ1・3で消費した2ATPを回収します。"
+  },
+  {
+    step: 8, substrate: "3-ホスホグリセリン酸 (×2)", product: "2-ホスホグリセリン酸 (×2)",
+    enzyme: "ホスホグリセリン酸ムターゼ",
+    wrongEnzymes: ["エノラーゼ", "ホスホグリセリン酸キナーゼ", "アルドラーゼ"],
+    energy: "変化なし",
+    wrongEnergy: ["ATP産生 (×2)", "ATP消費 (×1)", "NADH産生 (×1)"],
+    explanation: "リン酸基を3位から2位へ移動します。2,3-ビスホスホグリセリン酸が中間体として生成します。赤血球ではBPGが酸素解離曲線を調節します。"
+  },
+  {
+    step: 9, substrate: "2-ホスホグリセリン酸 (×2)", product: "ホスホエノールピルビン酸 (×2)",
+    enzyme: "エノラーゼ",
+    wrongEnzymes: ["ピルビン酸キナーゼ", "ホスホグリセリン酸ムターゼ", "ホスホフルクトキナーゼ-1"],
+    energy: "変化なし",
+    wrongEnergy: ["ATP産生 (×2)", "ATP消費 (×1)", "NADH産生 (×1)"],
+    explanation: "脱水反応によりPEPを生成します。フッ素（フッ化物）はエノラーゼを阻害します（歯磨き粉の虫歯予防効果の一因）。"
+  },
+  {
+    step: 10, substrate: "ホスホエノールピルビン酸 (×2)", product: "ピルビン酸 (×2)",
+    enzyme: "ピルビン酸キナーゼ",
+    wrongEnzymes: ["エノラーゼ", "ホスホフルクトキナーゼ-1", "ヘキソキナーゼ"],
+    energy: "ATP産生 (×2)",
+    wrongEnergy: ["ATP消費 (×2)", "NADH産生 (×2)", "変化なし"],
+    explanation: "解糖系最後のステップ。PEPからピルビン酸へ変換し2ATPを産生。ピルビン酸キナーゼ欠損症は溶血性貧血を引き起こします。解糖系の純収支は2ATP + 2NADH。"
+  }
+];
+
+let current = 0, score = 0, enzymeAnswered = false, energyAnswered = false, enzymeCorrect = false, energyCorrect = false;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function renderStep() {
+  const s = steps[current];
+  document.getElementById('stepNum').textContent = s.step;
+  document.getElementById('substrateBox').textContent = s.substrate;
+  document.getElementById('productBox').textContent = s.product;
+  document.getElementById('stepLabel').textContent = `ステップ ${s.step} / 10`;
+  document.getElementById('explanationBox').classList.add('hidden');
+  document.getElementById('nextBtn').classList.add('hidden');
+  enzymeAnswered = false; energyAnswered = false; enzymeCorrect = false; energyCorrect = false;
+
+  const enzOpts = shuffle([s.enzyme, ...s.wrongEnzymes]);
+  const enO = document.getElementById('enzymeOptions');
+  enO.innerHTML = '';
+  enzOpts.forEach(e => {
+    const btn = document.createElement('button');
+    btn.textContent = e;
+    btn.className = 'bg-gray-700 hover:bg-blue-700 text-white text-xs px-2 py-2 rounded-lg transition-colors';
+    btn.setAttribute('aria-label', `酵素: ${e}`);
+    btn.onclick = () => answerEnzyme(e, s, btn, enO);
+    enO.appendChild(btn);
+  });
+
+  const energOpts = shuffle([s.energy, ...s.wrongEnergy]);
+  const enE = document.getElementById('energyOptions');
+  enE.innerHTML = '';
+  energOpts.forEach(e => {
+    const btn = document.createElement('button');
+    btn.textContent = e;
+    btn.className = 'bg-gray-700 hover:bg-purple-700 text-white text-xs px-2 py-2 rounded-lg transition-colors';
+    btn.setAttribute('aria-label', `エネルギー: ${e}`);
+    btn.onclick = () => answerEnergy(e, s, btn, enE);
+    enE.appendChild(btn);
+  });
+}
+
+function lockButtons(container) {
+  container.querySelectorAll('button').forEach(b => { b.disabled = true; b.onclick = null; });
+}
+
+function answerEnzyme(chosen, s, btn, container) {
+  if (enzymeAnswered) return;
+  enzymeAnswered = true;
+  enzymeCorrect = (chosen === s.enzyme);
+  if (enzymeCorrect) {
+    btn.className = 'bg-green-600 text-white text-xs px-2 py-2 rounded-lg font-bold';
+  } else {
+    btn.className = 'bg-red-600 text-white text-xs px-2 py-2 rounded-lg font-bold';
+    container.querySelectorAll('button').forEach(b => {
+      if (b.textContent === s.enzyme) b.className = 'bg-green-600 text-white text-xs px-2 py-2 rounded-lg font-bold';
+    });
+  }
+  lockButtons(container);
+  checkBothAnswered(s);
+}
+
+function answerEnergy(chosen, s, btn, container) {
+  if (energyAnswered) return;
+  energyAnswered = true;
+  energyCorrect = (chosen === s.energy);
+  if (energyCorrect) {
+    btn.className = 'bg-green-600 text-white text-xs px-2 py-2 rounded-lg font-bold';
+  } else {
+    btn.className = 'bg-red-600 text-white text-xs px-2 py-2 rounded-lg font-bold';
+    container.querySelectorAll('button').forEach(b => {
+      if (b.textContent === s.energy) b.className = 'bg-green-600 text-white text-xs px-2 py-2 rounded-lg font-bold';
+    });
+  }
+  lockButtons(container);
+  checkBothAnswered(s);
+}
+
+function checkBothAnswered(s) {
+  if (!enzymeAnswered || !energyAnswered) return;
+  let pts = 0;
+  if (enzymeCorrect) pts++;
+  if (energyCorrect) pts++;
+  score += pts;
+  document.getElementById('scoreDisplay').textContent = score;
+  const expBox = document.getElementById('explanationBox');
+  const result = document.getElementById('explanationResult');
+  expBox.classList.remove('hidden');
+  if (pts === 2) result.textContent = '✅ 両方正解！ +2点';
+  else if (pts === 1) result.textContent = '△ 部分正解 +1点';
+  else result.textContent = '❌ 不正解 +0点';
+  document.getElementById('explanationText').textContent = s.explanation;
+  document.getElementById('nextBtn').classList.remove('hidden');
+}
+
+function nextStep() {
+  current++;
+  if (current >= steps.length) {
+    showResult();
+  } else {
+    renderStep();
+  }
+}
+
+function showResult() {
+  document.getElementById('quizArea').classList.add('hidden');
+  document.getElementById('resultArea').classList.remove('hidden');
+  document.getElementById('finalScore').textContent = score;
+  const msgs = ['もう少し復習しましょう！', '基礎はOK！', 'なかなか良い！', '素晴らしい！', '完璧です！🎉'];
+  const rank = Math.min(Math.floor(score / 4), 4);
+  document.getElementById('rankMessage').textContent = msgs[rank];
+  localStorage.setItem('glycolysis_best', Math.max(score, parseInt(localStorage.getItem('glycolysis_best') || 0)));
+}
+
+function restart() {
+  current = 0; score = 0;
+  document.getElementById('scoreDisplay').textContent = 0;
+  document.getElementById('quizArea').classList.remove('hidden');
+  document.getElementById('resultArea').classList.add('hidden');
+  renderStep();
+}
+
+renderStep();
+</script>
+</body>
+</html>
